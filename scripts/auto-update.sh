@@ -1,21 +1,21 @@
 #!/bin/bash
-# SearXNG Integration - Auto-Update Script
-# Checks for updates every hour via cron
+# Auto-Update Script for Free Web Search Skill
+# Automatically checks and installs updates when the skill runs
 
 set -e
 
-# Configuration
+# Get script directory (works on any system)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_NAME="free-web-search"
 REPO_URL="https://github.com/vksco/free-web-search"
 BRANCH="main"
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 LOCAL_VERSION_FILE="$SCRIPT_DIR/VERSION"
-REMOTE_VERSION_URL="https://raw.githubusercontent.com/vksco/free-web-search/$BRANCH/VERSION"
+REMOTE_VERSION_URL="https://raw.githubusercontent.com/vksco/free-web-search/main/VERSION"
 LOG_FILE="$SCRIPT_DIR/update.log"
+TEMP_DIR="/tmp/free-web-search-update-$$"
 BACKUP_DIR="$SCRIPT_DIR/backups"
 
-# Colors
-RED='\033[0;31m'
+# Colors for output
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
@@ -27,167 +27,167 @@ log() {
     local message=$2
     local timestamp=$(date '+%Y-%m-%d %H:%M:%S')
     
+    # Write to log file
     echo "[$timestamp] [$level] $message" >> "$LOG_FILE"
     
-    case $level in
-        INFO)
-            echo -e "${GREEN}[INFO]${NC} $message"
-            ;;
-        WARN)
-            echo -e "${YELLOW}[WARN]${NC} $message"
-            ;;
-        ERROR)
-            echo -e "${RED}[ERROR]${NC} $message"
-            ;;
-    esac
-}
-
-# Create backup
-create_backup() {
-    log "INFO" "Creating backup before update..."
-    mkdir -p "$BACKUP_DIR"
-    
-    # Backup current version
-    if [ -f "$LOCAL_VERSION_FILE" ]; then
-        cp "$LOCAL_VERSION_FILE" "$BACKUP_DIR/VERSION.$(date +%Y%m%d_%H%M%S).bak"
-        log "INFO" "Backup created"
+    # Only show INFO messages to stdout (for skill visibility)
+    if [ "$level" = "INFO" ]; then
+        echo -e "${GREEN}[UPDATE]${NC} $message" >&2
     fi
-    
-    # Backup entire skill directory
-    tar -czf "$BACKUP_DIR/skill_$(date +%Y%m%d_%H%M%S).tar.gz" \
-        -C "$SCRIPT_DIR" \
-        --exclude="backups" \
-        .
-    
-    log "INFO" "Full skill backup created"
 }
 
-# Check for updates
-check_for_updates() {
-    log "INFO" "Checking for updates..."
-    
-    # Get local version
+# Check if update is available
+check_for_update() {
+    # Check if VERSION file exists
     if [ ! -f "$LOCAL_VERSION_FILE" ]; then
-        log "WARN" "No local version file found. Assuming first installation."
+        log "WARN" "VERSION file not found, assuming first run"
         echo "0.0.0" > "$LOCAL_VERSION_FILE"
     fi
     
-    local LOCAL_VERSION=$(cat "$LOCAL_VERSION_FILE")
-    log "INFO" "Local version: $LOCAL_VERSION"
+    # Get local version
+    local LOCAL_VERSION=$(cat "$LOCAL_VERSION_FILE" 2>/dev/null || echo "0.0.0")
     
-    # Get remote version
-    local REMOTE_VERSION=$(curl -s "$REMOTE_VERSION_URL" 2>/dev/null)
+    # Get remote version (with timeout)
+    local REMOTE_VERSION=$(curl -s --max-time 5 "$REMOTE_VERSION_URL" 2>/dev/null)
     
-    if [ $? -ne 0 ]; then
-        log "ERROR" "Failed to check remote version"
+    # Check if we got a valid response
+    if [ -z "$REMOTE_VERSION" ] || [[ ! "$REMOTE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+        log "WARN" "Could not fetch remote version, skipping update check"
         return 1
     fi
-    
-    log "INFO" "Remote version: $REMOTE_VERSION"
     
     # Compare versions
     if [ "$LOCAL_VERSION" = "$REMOTE_VERSION" ]; then
-        log "INFO" "Skill is up to date (v$LOCAL_VERSION)"
-        return 0
-    fi
-    
-    log "INFO" "Update available: v$LOCAL_VERSION → v$REMOTE_VERSION"
-    return 0
-}
-
-# Perform update
-perform_update() {
-    log "INFO" "Starting update process..."
-    
-    # Create backup first
-    create_backup
-    
-    # Stop container if running
-    if docker ps --format '{{.Names}}' | grep -q "searxng-openclaw"; then
-        log "INFO" "Stopping SearXNG container for update..."
-        bash "$SCRIPT_DIR/scripts/docker-manager.sh" stop
-        CONTAINER_WAS_RUNNING=true
-    fi
-    
-    # Download update
-    log "INFO" "Downloading update from GitHub..."
-    local SKILL_PARENT_DIR="$(dirname "$SCRIPT_DIR")"
-    cd "$SKILL_PARENT_DIR"
-    
-    # Remove old version (keep config and data)
-    if [ -d "$SKILL_NAME" ]; then
-        # Preserve important files
-        mkdir -p /tmp/searxng-preserve
-        cp -r "$SKILL_NAME/docker" /tmp/searxng-preserve/ 2>/dev/null || true
-        cp -r "$SKILL_NAME/backups" /tmp/searxng-preserve/ 2>/dev/null || true
-        
-        # Remove old skill
-        rm -rf "$SKILL_NAME"
-    fi
-    
-    # Clone new version
-    git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$SKILL_NAME-temp" 2>&1 | tee -a "$LOG_FILE"
-    
-    if [ $? -ne 0 ]; then
-        log "ERROR" "Failed to download update"
-        
-        # Restore backup
-        tar -xzf "$BACKUP_DIR/skill_*.tar.gz" -C /
-        log "INFO" "Restored from backup"
+        # No update available
         return 1
     fi
     
-    # Move new files into place
-    mv "$SKILL_NAME-temp" "$SKILL_NAME"
+    # Update available!
+    log "INFO" "Update available: v$LOCAL_VERSION → v$REMOTE_VERSION"
+    echo "$REMOTE_VERSION"
+    return 0
+}
+
+# Create backup before update
+create_backup() {
+    log "INFO" "Creating backup before update..."
+    
+    # Create backup directory if it doesn't exist
+    mkdir -p "$BACKUP_DIR"
+    
+    # Create backup tarball
+    local BACKUP_FILE="$BACKUP_DIR/skill_$(date +%Y%m%d_%H%M%S).tar.gz"
+    tar -czf "$BACKUP_FILE" \
+        -C "$SCRIPT_DIR" \
+        --exclude="backups" \
+        --exclude="*.log" \
+        --exclude=".git" \
+        . 2>/dev/null || true
+    
+    log "INFO" "Backup created: $BACKUP_FILE"
+    
+    # Keep only last 5 backups
+    cd "$BACKUP_DIR"
+    ls -t skill_*.tar.gz 2>/dev/null | tail -n +6 | xargs -r rm -f 2>/dev/null || true
+    cd - > /dev/null
+}
+
+# Download and install update
+install_update() {
+    local NEW_VERSION=$1
+    
+    log "INFO" "Downloading v$NEW_VERSION from GitHub..."
+    
+    # Create temporary directory
+    mkdir -p "$TEMP_DIR"
+    
+    # Clone repository to temp directory
+    if ! git clone --depth 1 --branch "$BRANCH" "$REPO_URL" "$TEMP_DIR" 2>/dev/null; then
+        log "WARN" "Failed to download update"
+        rm -rf "$TEMP_DIR"
+        return 1
+    fi
+    
+    log "INFO" "Installing update..."
+    
+    # Preserve important files before update
+    local PRESERVE_DIR="/tmp/free-web-search-preserve-$$"
+    mkdir -p "$PRESERVE_DIR"
+    
+    # Preserve user configuration
+    if [ -f "$SCRIPT_DIR/docker/settings.yml" ]; then
+        cp "$SCRIPT_DIR/docker/settings.yml" "$PRESERVE_DIR/" 2>/dev/null || true
+    fi
+    
+    if [ -f "$SCRIPT_DIR/docker/secret_key" ]; then
+        cp "$SCRIPT_DIR/docker/secret_key" "$PRESERVE_DIR/" 2>/dev/null || true
+    fi
+    
+    # Copy new files (excluding preserved directories)
+    rsync -a --exclude="backups" \
+              --exclude="*.log" \
+              --exclude=".git" \
+              --exclude="docker/settings.yml" \
+              --exclude="docker/secret_key" \
+              "$TEMP_DIR/" "$SCRIPT_DIR/" 2>/dev/null || \
+    cp -r "$TEMP_DIR/"* "$SCRIPT_DIR/" 2>/dev/null || true
     
     # Restore preserved files
-    if [ -d /tmp/searxng-preserve ]; then
-        cp -r /tmp/searxng-preserve/* "$SKILL_NAME/" 2>/dev/null || true
-        rm -rf /tmp/searxng-preserve
+    if [ -f "$PRESERVE_DIR/settings.yml" ]; then
+        cp "$PRESERVE_DIR/settings.yml" "$SCRIPT_DIR/docker/" 2>/dev/null || true
     fi
     
-    # Update version file
-    local NEW_VERSION=$(cat "$SKILL_PARENT_DIR/$SKILL_NAME/VERSION")
-    echo "$NEW_VERSION" > "$LOCAL_VERSION_FILE"
-    
-    log "INFO" "Update installed successfully"
-    
-    # Restart container if it was running
-    if [ "$CONTAINER_WAS_RUNNING" = true ]; then
-        log "INFO" "Restarting SearXNG container..."
-        bash "$SCRIPT_DIR/scripts/docker-manager.sh" start
+    if [ -f "$PRESERVE_DIR/secret_key" ]; then
+        cp "$PRESERVE_DIR/secret_key" "$SCRIPT_DIR/docker/" 2>/dev/null || true
     fi
     
-    # Notify user
-    log "INFO" "✅ Update complete! Skill updated to v$(cat $LOCAL_VERSION_FILE)"
+    # Clean up
+    rm -rf "$TEMP_DIR"
+    rm -rf "$PRESERVE_DIR"
     
-    # Send notification to user (optional - requires notification setup)
-    # notify_user "SearXNG skill updated to v$(cat $LOCAL_VERSION_FILE)"
+    log "INFO" "✅ Updated to v$NEW_VERSION"
     
     return 0
 }
 
-# Main update check
+# Main function
 main() {
-    log "INFO" "=== SearXNG Skill Update Checker ==="
-    log "INFO" "Running at: $(date)"
+    # Check if we should skip update (e.g., if last check was less than 1 hour ago)
+    local LAST_CHECK_FILE="$SCRIPT_DIR/.last_update_check"
+    local CHECK_INTERVAL=3600  # 1 hour in seconds
+    
+    if [ -f "$LAST_CHECK_FILE" ]; then
+        local LAST_CHECK=$(cat "$LAST_CHECK_FILE" 2>/dev/null || echo "0")
+        local CURRENT_TIME=$(date +%s)
+        local ELAPSED=$((CURRENT_TIME - LAST_CHECK))
+        
+        if [ $ELAPSED -lt $CHECK_INTERVAL ]; then
+            # Skip update check (checked recently)
+            exit 0
+        fi
+    fi
+    
+    # Update last check time
+    date +%s > "$LAST_CHECK_FILE"
     
     # Check for updates
-    if ! check_for_updates; then
-        log "INFO" "No update needed"
+    local NEW_VERSION=$(check_for_update)
+    
+    if [ $? -ne 0 ] || [ -z "$NEW_VERSION" ]; then
+        # No update available or error occurred
         exit 0
     fi
     
-    # Ask for confirmation (optional - can be skipped for auto-update)
-    read -p "Update available. Install now? [y/N]: " -n response
-    response=${response:-n}
+    # Create backup before updating
+    create_backup
     
-    if [[ "$response" =~ ^[Yy]$ ]]; then
-        perform_update
-        exit $?
-    else
-        log "INFO" "Update deferred by user"
+    # Install the update
+    if install_update "$NEW_VERSION"; then
+        log "INFO" "Update complete! Restart skill to use v$NEW_VERSION"
         exit 0
+    else
+        log "WARN" "Update failed, continuing with current version"
+        exit 1
     fi
 }
 

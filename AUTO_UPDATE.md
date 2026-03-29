@@ -1,377 +1,427 @@
-# Auto-Update Guide for Free Web Search Skill
+# Auto-Update System - Free Web Search Skill
 
 ## Overview
-The auto-update script automatically checks for updates from GitHub every hour and installs them seamlessly.
 
-## Setup
-
-### 1. Make Script Executable
-```bash
-chmod +x scripts/auto-update.sh
-```
-
-### 2. Test Auto-Update
-```bash
-bash scripts/auto-update.sh
-```
-
-### 3. Setup Cron Job (Auto-Check Every Hour)
-```bash
-crontab -e
-```
-
-Add this line:
-```cron
-# Check for skill updates every hour
-0 * * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
-```
-
-**Replace `/path/to/` with your actual installation path.**
-
-Examples for different systems:
-```bash
-# macOS
-0 * * * * /bin/bash /Users/YOUR_USERNAME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
-
-# Linux
-0 * * * * /bin/bash /home/YOUR_USERNAME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
-
-# Or use $HOME
-0 * * * * /bin/bash $HOME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
-```
-
-### 4. Alternative Schedules
-
-Every 6 hours:
-```cron
-0 */6 * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
-```
-
-Daily at midnight:
-```cron
-0 0 * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
-```
-
-Weekly on Sunday:
-```cron
-0 0 * * 0 /bin/bash /path/to/free-web-search/scripts/auto-update.sh
-```
+The skill automatically checks and installs updates from GitHub when it loads. No cron jobs or manual intervention required.
 
 ---
 
 ## How It Works
 
-### Update Process (7 Steps)
+### Automatic Update Process
 
-1. **Version Check** - Compares local VERSION file with GitHub's VERSION file
-2. **Create Backup** - Creates backup of current skill files (tar.gz)
-3. **Stop Container** - Stops SearXNG Docker container if running
-4. **Download** - Pulls latest version from GitHub
-5. **Preserve Config** - Keeps your custom configuration and data
-6. **Install** - Updates skill files
-7. **Restart** - Restarts SearXNG container automatically
+When the skill loads (every time you use it):
 
-### What Gets Updated
-- ✅ Scripts (auto-update.sh, docker-manager.sh, search.py)
-- ✅ Documentation (README.md, USAGE.md, etc.)
-- ✅ Skill metadata (SKILL.md)
-- ✅ API references
-
-### What's Preserved (Never Changed)
-- 🔒 `docker/settings.yml` - Your SearXNG configuration
-- 🔒 `docker/secret_key` - Your secret key
-- 🔒 `backups/` - Your backup history
-- 🔒 `update.log` - Your update logs
-
----
-
-## Features
-
-- **Automatic** - Runs via cron on your schedule
-- **Safe** - Creates backups before every update
-- **Smart** - Preserves your custom configuration
-- **Seamless** - Restarts container automatically
-- **Logged** - All actions logged to `update.log`
-- **Reversible** - Can restore from backups if needed
-
----
-
-## User Notification (Optional)
-
-### Option 1: macOS Notification
-Add to `auto-update.sh` after successful update:
-```bash
-osascript -e 'display notification "Free Web Search skill updated to v'$NEW_VERSION'" with title "OpenClaw"'
 ```
-
-### Option 2: Desktop Notification (Linux)
-```bash
-notify-send "OpenClaw" "Free Web Search skill updated to v$NEW_VERSION"
-```
-
-### Option 3: Slack/Discord Webhook
-```bash
-curl -X POST -H 'Content-type: application/json' \
-  --data '{"text":"Free Web Search skill updated to v'$NEW_VERSION'"}' \
-  YOUR_WEBHOOK_URL
+1. Skill loads → Runs auto-update.sh
+                ↓
+2. Check: Has it been 1 hour since last check?
+                ↓
+          No → Skip (too soon)
+          Yes → Continue
+                ↓
+3. Get local VERSION file
+   Example: 0.1.0
+                ↓
+4. Get remote VERSION from GitHub
+   https://raw.githubusercontent.com/vksco/free-web-search/main/VERSION
+   Example: 0.2.0
+                ↓
+5. Compare versions
+                ↓
+          Same → No update, exit
+          Different → Update available!
+                ↓
+6. Create backup
+   backups/skill_20260329_220000.tar.gz
+                ↓
+7. Download new version to /tmp
+                ↓
+8. Preserve your config
+   - docker/settings.yml
+   - docker/secret_key
+                ↓
+9. Copy new files to skill directory
+                ↓
+10. Clean up temp folder
+                ↓
+11. Log update to update.log
+                ↓
+12. Done! Update installed ✅
 ```
 
 ---
 
-## Configuration Options
+## Key Features
 
-### Auto-Update Frequency
+### ✅ Automatic
+- Runs every time the skill loads
+- No cron jobs required
+- No user intervention needed
 
-| Schedule | Cron Expression |
-|----------|----------------|
-| Every hour | `0 * * * *` |
-| Every 6 hours | `0 */6 * * *` |
-| Daily | `0 0 * * *` |
-| Weekly | `0 0 * * 0` |
+### ✅ Smart Throttling
+- Only checks once per hour (configurable)
+- Prevents excessive GitHub API calls
+- Uses `.last_update_check` timestamp file
 
-### Skip Confirmation Prompt
+### ✅ Safe Updates
+- Creates backup before every update
+- Preserves your configuration files
+- Can restore from backup if needed
 
-For fully automatic updates without asking, edit `auto-update.sh`:
+### ✅ Seamless
+- Updates download in background
+- No service interruption
+- Update applies on next skill load
 
-**Change this:**
+### ✅ Config Preservation
+These files are **never overwritten**:
+- `docker/settings.yml` - Your SearXNG config
+- `docker/secret_key` - Your secret key
+- `backups/` - Your backup history
+- `update.log` - Your update logs
+
+---
+
+## Update Frequency
+
+### Default: Once Per Hour
+
+The skill checks for updates **once per hour** when loaded.
+
+To change this, edit `scripts/auto-update.sh`:
+
 ```bash
-read -p "Update available. Install now? [y/N]: " -n response
-response=${response:-n}
+# Change CHECK_INTERVAL (in seconds)
+local CHECK_INTERVAL=3600  # 1 hour
 
-if [[ "$response" =~ ^[Yy]$ ]]; then
-    perform_update
-```
-
-**To this:**
-```bash
-# Always update without asking
-perform_update
+# Examples:
+local CHECK_INTERVAL=1800   # 30 minutes
+local CHECK_INTERVAL=7200   # 2 hours
+local CHECK_INTERVAL=86400  # 24 hours
+local CHECK_INTERVAL=0      # Always check (not recommended)
 ```
 
 ---
 
-## Version File Format
+## Manual Update Check
 
-The VERSION file uses semantic versioning:
-```
-MAJOR.MINOR.PATCH
-```
+To manually check and install updates:
 
-Example progression:
-```
-0.1.0 - First stable release
-0.1.1 - Bug fixes
-0.2.0 - New features (backwards compatible)
-1.0.0 - Major release (possible breaking changes)
-```
-
----
-
-## Update Workflow
-
-```
-┌─────────────┐
-│  Cron Job   │
-│ (Scheduled) │
-└──────┬──────┘
-       │
-       v
-┌──────────────────┐
-│  Check GitHub    │
-│  for updates     │
-└──────┬───────────┘
-       │
-       v
-  ┌────────────────┐
-  │ New version?   │
-  └────┬─────┬─────┘
-    No │     │ Yes
-       │     │
-       v     v
-    Done   ┌─────────────┐
-           │   Backup    │
-           │   current   │
-           └──────┬──────┘
-                  │
-                  v
-           ┌─────────────┐
-           │   Download  │
-           │   from GH   │
-           └──────┬──────┘
-                  │
-                  v
-           ┌─────────────┐
-           │  Preserve   │
-           │   config    │
-           └──────┬──────┘
-                  │
-                  v
-           ┌─────────────┐
-           │   Install   │
-           │   update    │
-           └──────┬──────┘
-                  │
-                  v
-           ┌─────────────┐
-           │  Restart    │
-           │  container  │
-           └──────┬──────┘
-                  │
-                  v
-             ✅ Done
-```
-
----
-
-## Troubleshooting
-
-### "Permission denied"
 ```bash
-chmod +x scripts/auto-update.sh
-```
-
-### "Command not found"
-```bash
-# Ensure bash path is correct
-which bash
-# Should output: /bin/bash or /usr/bin/bash
-```
-
-### "Git clone failed"
-```bash
-# Check internet connection
-ping github.com
-
-# Check repository URL is accessible
-curl -I https://github.com/vksco/free-web-search
-```
-
-### "Container won't restart"
-```bash
-# Check container logs
-docker logs searxng-openclaw
-
-# Manually start
-bash scripts/docker-manager.sh start
-```
-
-### Restore from Backup
-```bash
-# List backups
-ls -la backups/
-
-# Restore from backup (replace with your backup filename)
-tar -xzf backups/skill_TIMESTAMP.tar.gz -C /path/to/free-web-search/
-```
-
----
-
-## Testing Updates
-
-### Manual Update Check
-```bash
-# Run update script manually
+cd ~/.openclaw/workspace/skills/free-web-search
 bash scripts/auto-update.sh
 ```
 
-### Check Update Logs
-```bash
-# View recent updates
-tail -20 update.log
+---
 
-# Follow live updates
-tail -f update.log
-```
+## What Gets Updated
 
-### View Current Version
-```bash
-cat VERSION
-```
+### ✅ Updated Automatically
+- `scripts/` - All scripts (auto-update.sh, docker-manager.sh, search.py)
+- `SKILL.md` - Skill documentation
+- `README.md` - Main documentation
+- `USAGE.md` - Usage examples
+- `references/` - API references
+- `VERSION` - Version number
+
+### 🔒 Never Changed
+- `docker/settings.yml` - Your custom SearXNG configuration
+- `docker/secret_key` - Your secret key
+- `backups/` - Your backup history
+- `update.log` - Your update logs
+- `.last_update_check` - Last check timestamp
 
 ---
 
 ## Backup System
 
-### How Backups Work
-- Created automatically before every update
-- Stored in `backups/` directory
-- Named with timestamp: `skill_YYYYMMDD_HHMMSS.tar.gz`
-- Last 5 backups retained (older ones auto-deleted)
+### Automatic Backups
+
+Before every update, the skill creates a full backup:
+
+```bash
+backups/skill_YYYYMMDD_HHMMSS.tar.gz
+```
+
+Example:
+```
+backups/skill_20260329_220000.tar.gz
+backups/skill_20260329_223000.tar.gz
+backups/skill_20260330_100000.tar.gz
+```
+
+### Backup Retention
+
+- Keeps **last 5 backups**
+- Older backups automatically deleted
+- Saves disk space
 
 ### Manual Backup
+
 ```bash
-# Create backup manually
+cd ~/.openclaw/workspace/skills/free-web-search
 tar -czf backups/manual_backup_$(date +%Y%m%d_%H%M%S).tar.gz \
   --exclude='backups' \
   --exclude='*.log' \
   .
 ```
 
-### List Backups
+### Restore from Backup
+
 ```bash
+cd ~/.openclaw/workspace/skills/free-web-search
+
+# List backups
 ls -lh backups/
+
+# Restore (replace with your backup filename)
+tar -xzf backups/skill_20260329_220000.tar.gz
 ```
 
 ---
 
-## Security Considerations
+## Update Log
 
-- **HTTPS Only** - Downloads only from HTTPS GitHub URLs
-- **Version Verification** - Validates VERSION file format
-- **Backup Retention** - Keeps last 5 backups
-- **Config Preservation** - Never overwrites user configuration
-- **Log Security** - Logs don't contain sensitive data
-- **No Remote Execution** - Only updates files, doesn't run remote code
+All update actions are logged to `update.log`:
+
+### View Update Log
+
+```bash
+# View recent updates
+tail -20 update.log
+
+# Follow live updates
+tail -f update.log
+
+# Search for updates
+grep "Updated to" update.log
+```
+
+### Example Log Entry
+
+```
+[2026-03-29 22:00:15] [INFO] Update available: v0.1.0 → v0.2.0
+[2026-03-29 22:00:15] [INFO] Creating backup before update...
+[2026-03-29 22:00:16] [INFO] Backup created: /path/to/backups/skill_20260329_220016.tar.gz
+[2026-03-29 22:00:16] [INFO] Downloading v0.2.0 from GitHub...
+[2026-03-29 22:00:45] [INFO] Installing update...
+[2026-03-29 22:00:47] [INFO] ✅ Updated to v0.2.0
+```
 
 ---
 
-## Disable or Remove
+## Configuration
 
-### Disable Auto-Update
+### Skip Update Check
+
+To disable auto-updates:
+
 ```bash
-# Rename script to prevent execution
+# Create a skip file
+touch ~/.openclaw/workspace/skills/free-web-search/.skip_updates
+```
+
+Edit `scripts/auto-update.sh` to check for this file:
+
+```bash
+# Add after main() function starts
+if [ -f "$SCRIPT_DIR/.skip_updates" ]; then
+    log "INFO" "Updates skipped (.skip_updates found)"
+    exit 0
+fi
+```
+
+### Change Update Source
+
+To use a different branch or fork:
+
+Edit `scripts/auto-update.sh`:
+
+```bash
+# Change these lines:
+REPO_URL="https://github.com/YOUR_USERNAME/free-web-search"
+BRANCH="develop"  # or "main", "beta", etc.
+```
+
+---
+
+## Troubleshooting
+
+### "Update check failed"
+
+**Cause**: No internet connection or GitHub is down
+
+**Solution**:
+```bash
+# Test connection
+ping github.com
+curl -I https://github.com/vksco/free-web-search
+```
+
+### "Permission denied"
+
+**Cause**: Script not executable
+
+**Solution**:
+```bash
+chmod +x scripts/auto-update.sh
+```
+
+### "Backup failed"
+
+**Cause**: Insufficient disk space or permissions
+
+**Solution**:
+```bash
+# Check disk space
+df -h
+
+# Check permissions
+ls -la backups/
+
+# Create backup directory
+mkdir -p backups
+chmod 755 backups
+```
+
+### "Download failed"
+
+**Cause**: Git not installed or repository inaccessible
+
+**Solution**:
+```bash
+# Install git
+# macOS: brew install git
+# Linux: sudo apt install git
+
+# Test clone
+git clone https://github.com/vksco/free-web-search.git /tmp/test-clone
+```
+
+### Restore After Failed Update
+
+```bash
+# 1. Stop the skill (if container running)
+bash scripts/docker-manager.sh stop
+
+# 2. Restore from backup
+cd ~/.openclaw/workspace/skills/free-web-search
+tar -xzf backups/skill_TIMESTAMP.tar.gz
+
+# 3. Restart the skill
+bash scripts/docker-manager.sh start
+```
+
+---
+
+## How to Disable Auto-Update
+
+### Method 1: Skip File (Recommended)
+
+```bash
+touch ~/.openclaw/workspace/skills/free-web-search/.skip_updates
+```
+
+### Method 2: Rename Script
+
+```bash
+cd ~/.openclaw/workspace/skills/free-web-search
 mv scripts/auto-update.sh scripts/auto-update.sh.disabled
 ```
 
-### Remove Cron Job
-```bash
-crontab -e
-# Delete the line containing auto-update.sh
-```
+### Method 3: Delete Script
 
-### Completely Remove Auto-Update
 ```bash
-# Remove cron job
-crontab -e  # Delete auto-update line
-
-# Remove script (optional)
 rm scripts/auto-update.sh
-
-# Keep backups and logs if you want history
 ```
+
+---
+
+## Testing Updates
+
+### Test Update System
+
+```bash
+# 1. Check current version
+cat VERSION
+
+# 2. Force update check (ignore time throttling)
+rm .last_update_check
+
+# 3. Run update manually
+bash scripts/auto-update.sh
+
+# 4. Check logs
+tail -20 update.log
+```
+
+### Simulate Version Change
+
+```bash
+# 1. Change local version to older
+echo "0.0.1" > VERSION
+
+# 2. Run update
+bash scripts/auto-update.sh
+
+# 3. Should detect v0.1.0 (or latest) and update
+```
+
+---
+
+## Security
+
+### Safe Update Process
+
+1. ✅ **HTTPS Only** - Downloads only from GitHub over HTTPS
+2. ✅ **Version Validation** - Checks VERSION format before updating
+3. ✅ **Config Preservation** - Never overwrites user configuration
+4. ✅ **Backup System** - Always creates backup before update
+5. ✅ **No Remote Execution** - Only downloads files, doesn't execute remote code
+6. ✅ **Log Security** - Logs don't contain sensitive data
+
+---
+
+## Version Format
+
+The skill uses semantic versioning:
+
+```
+MAJOR.MINOR.PATCH
+```
+
+Examples:
+- `0.1.0` - First stable release
+- `0.1.1` - Bug fixes
+- `0.2.0` - New features
+- `1.0.0` - Major release
 
 ---
 
 ## Summary
 
-✅ **Automatic** - Checks for updates on your schedule via cron  
-✅ **Safe** - Creates backups before updating  
-✅ **Smart** - Preserves custom configuration  
-✅ **Seamless** - Restarts container automatically  
-✅ **Logged** - All actions logged to `update.log`  
-✅ **Reversible** - Can restore from backups  
+✅ **Automatic** - Checks for updates when skill loads
+✅ **Smart** - Only checks once per hour
+✅ **Safe** - Creates backups before updating
+✅ **Preserves** - Keeps your custom configuration
+✅ **Seamless** - No user intervention required
+✅ **Logged** - All actions logged to update.log
+✅ **Reversible** - Can restore from backups
 
 ---
 
-## Quick Start Checklist
+## Quick Reference
 
-- [ ] Make script executable: `chmod +x scripts/auto-update.sh`
-- [ ] Test manually: `bash scripts/auto-update.sh`
-- [ ] Add to crontab: `crontab -e`
-- [ ] Verify cron job: `crontab -l`
-- [ ] Check logs: `tail -f update.log`
+| Command | Action |
+|---------|--------|
+| `bash scripts/auto-update.sh` | Manually check for updates |
+| `cat VERSION` | View current version |
+| `tail -20 update.log` | View recent updates |
+| `ls -lh backups/` | List backups |
+| `tar -xzf backups/skill_*.tar.gz` | Restore from backup |
 
 ---
 
-**Need help?** Check `update.log` or open an issue:  
+**Need help?** Check `update.log` or open an issue:
 https://github.com/vksco/free-web-search/issues

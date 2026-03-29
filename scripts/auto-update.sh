@@ -1,10 +1,11 @@
 #!/bin/bash
-# Auto-Update Script for Free Web Search Skill
+# Auto-Update Script for Free Web Search Skill - Universal (Linux/macOS)
 # Automatically checks and installs updates when the skill runs
+# Compatible with all Unix-like systems (Linux, macOS, BSD)
 
 set -e
 
-# Get script directory (works on any system)
+# Get script directory (works on both Linux and macOS)
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 SKILL_NAME="free-web-search"
 REPO_URL="https://github.com/vksco/free-web-search"
@@ -15,7 +16,7 @@ LOG_FILE="$SCRIPT_DIR/update.log"
 TEMP_DIR="/tmp/free-web-search-update-$$"
 BACKUP_DIR="$SCRIPT_DIR/backups"
 
-# Colors for output
+# Colors (works on Linux and macOS)
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'

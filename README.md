@@ -37,6 +37,18 @@ Self-Hosted
 
 ---
 
+## 🌍 Cross-Platform Support
+
+This skill works on all major operating systems:
+
+- **Linux** ✅ (Ubuntu, Debian, Fedora, etc.)
+- **macOS** ✅ (Intel and Apple Silicon)
+- **Windows** ✅ (Windows 10/11 with Docker Desktop)
+
+All scripts have both `.sh` (Linux/macOS) and `.bat` (Windows) versions.
+
+---
+
 ## ⚡ Installation
 
 ### 🤖 One-Prompt Auto-Install (Recommended)

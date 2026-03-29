@@ -1,6 +1,6 @@
 #!/bin/bash
-# SearXNG Docker Manager for OpenClaw - Simplified
-# Manages self-hosted SearXNG search engine container
+# SearXNG Docker Manager - Universal (Linux/macOS)
+# Works on all Unix-like systems with Docker
 
 set -e
 
@@ -8,7 +8,7 @@ CONTAINER_NAME="searxng-openclaw"
 IMAGE_NAME="searxng/searxng:latest"
 PORT="8888"
 
-# Colors
+# Colors (works on Linux and macOS)
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
@@ -17,6 +17,17 @@ NC='\033[0m'
 log_info() { echo -e "${GREEN}[INFO]${NC} $1"; }
 log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
+
+# Detect OS
+detect_os() {
+    if [[ "$OSTYPE" == "linux-gnu"* ]]; then
+        echo "linux"
+    elif [[ "$OSTYPE" == "darwin"* ]]; then
+        echo "macos"
+    else
+        echo "unknown"
+    fi
+}
 
 status() {
     if docker ps --format '{{.Names}}' | grep -q "^${CONTAINER_NAME}$"; then
@@ -35,6 +46,7 @@ start() {
     fi
     
     log_info "Starting SearXNG container..."
+    log_info "Detected OS: $(detect_os)"
     
     # Pull image if not exists
     if ! docker image inspect "$IMAGE_NAME" &> /dev/null; then
@@ -49,7 +61,7 @@ start() {
     else
         log_info "Creating new container..."
         
-        # Get script directory
+        # Get script directory (works on both Linux and macOS)
         SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
         DOCKER_DIR="$(dirname "$SCRIPT_DIR")/docker"
         
@@ -67,6 +79,7 @@ start() {
     fi
     
     # Wait for container
+    log_info "Waiting for container to start..."
     sleep 10
     
     # Check if running
@@ -111,7 +124,7 @@ remove() {
 }
 
 usage() {
-    echo "SearXNG Docker Manager for OpenClaw"
+    echo "SearXNG Docker Manager - Universal"
     echo ""
     echo "Usage: $0 {start|stop|restart|status|logs|remove}"
     echo ""
@@ -119,6 +132,8 @@ usage() {
     echo "Image:     $IMAGE_NAME"
     echo "Port:      $PORT"
     echo "URL:       http://localhost:${PORT}"
+    echo ""
+    echo "Compatible with: Linux, macOS"
 }
 
 case "${1:-}" in

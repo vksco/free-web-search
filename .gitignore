@@ -20,3 +20,6 @@ Thumbs.db
 *.tmp
 *.bak
 *.swp
+
+# Development scripts
+push-to-github.sh

@@ -9,7 +9,7 @@ Powered by [SearXNG](https://github.com/searxng/searxng) - Privacy-respecting, h
 
 ## Quick Start
 
-### Installation
+### One-Prompt Installation
 
 Give this prompt to your AI agent (Claude, ChatGPT, Codex, Cursor, OpenCode, Pi, Gemini):
 
@@ -19,7 +19,7 @@ Install the free-web-search skill from https://github.com/vksco/free-web-search
 Requirements:
 - Ensure Docker is installed and running
 - Clone the repo to ~/.openclaw/workspace/skills/free-web-search
-- Make all scripts executable
+- Make all scripts executable (Linux/macOS only)
 - Start the SearXNG container
 - Test with a simple search query
 
@@ -28,6 +28,7 @@ After installation, confirm it's working by searching for "AI agents" and showin
 
 ### Manual Installation
 
+**Linux/macOS:**
 ```bash
 # Clone repository
 git clone https://github.com/vksco/free-web-search.git ~/.openclaw/workspace/skills/free-web-search
@@ -39,32 +40,81 @@ chmod +x scripts/*.sh
 # Start SearXNG
 bash scripts/docker-manager.sh start
 
-# Wait for container to be ready (10-20 seconds)
+# Wait for container (10-20 seconds)
 sleep 20
 
 # Test search
 curl 'http://localhost:8888/search?q=test&format=json'
 ```
 
-## How to Use
+**Windows:**
+```cmd
+# Clone repository
+git clone https://github.com/vksco/free-web-search.git %USERPROFILE%\.openclaw\workspace\skills\free-web-search
+cd %USERPROFILE%\.openclaw\workspace\skills\free-web-search
 
-### 1. Check for Updates (Runs Automatically)
+# Start SearXNG
+scripts\docker-manager.bat start
 
-The skill automatically checks for updates when it loads. To manually check:
+# Wait for container (10-20 seconds)
+timeout /t 20
 
-```bash
-bash scripts/auto-update.sh
+# Test search (use PowerShell)
+curl http://localhost:8888/search?q=test&format=json
 ```
 
-This will:
-1. Check GitHub for latest version
-2. Download update if available
-3. Create backup of current version
-4. Install new version
-5. Preserve your configuration
+## Cross-Platform Support
 
-### 2. Search the Web
+This skill works on all major operating systems:
 
+- ✅ **Linux** - Bash scripts (.sh)
+- ✅ **macOS** - Bash scripts (.sh)
+- ✅ **Windows 10/11** - Batch scripts (.bat)
+
+### Available Scripts
+
+**Linux/macOS (scripts/):**
+- `docker-manager.sh` - Manage SearXNG container
+- `auto-update.sh` - Automatic updates
+- `search.py` - Python search wrapper
+- `integrate_with_openclaw.py` - Integration helper
+
+**Windows (scripts/):**
+- `docker-manager.bat` - Manage SearXNG container
+- `auto-update.bat` - Automatic updates
+
+## Auto-Update System
+
+The skill automatically checks and installs updates when it loads (no cron jobs needed):
+
+### How It Works:
+1. **Skill loads** → Runs auto-update check
+2. **Version check** → Compares local VERSION with GitHub
+3. **Smart throttling** → Only checks once per hour
+4. **Download** → If update available, downloads to temp folder
+5. **Backup** → Creates backup of current version
+6. **Install** → Replaces files, preserves your config
+7. **Cleanup** → Removes temp folder
+8. **Done** → Update complete!
+
+### Manual Update Check:
+```bash
+# Linux/macOS
+bash scripts/auto-update.sh
+
+# Windows
+scripts\auto-update.bat
+```
+
+### What's Preserved During Updates:
+- ✅ `docker/settings.yml` - Your SearXNG configuration
+- ✅ `docker/secret_key` - Your secret key
+- ✅ `backups/` - Your backup history
+- ✅ `update.log` - Your update logs
+
+## How to Use
+
+### Basic Search
 ```bash
 # Basic search
 curl 'http://localhost:8888/search?q=AI%20agents&format=json'
@@ -76,8 +126,7 @@ curl 'http://localhost:8888/search?q=python%20async&format=json&engines=github,s
 curl 'http://localhost:8888/search?q=breaking%20news&format=json&categories=news'
 ```
 
-### 3. Python Integration
-
+### Python Integration
 ```python
 import requests
 
@@ -102,35 +151,12 @@ for r in results:
 - ✅ **No API keys** - Completely free forever
 - ✅ **70+ search engines** - Google, Bing, DuckDuckGo, GitHub, Stack Overflow, Reddit, YouTube, Wikipedia, and more
 - ✅ **Auto-updates** - Automatically checks and installs updates
+- ✅ **Cross-platform** - Linux, macOS, Windows
 - ✅ **Privacy-focused** - Self-hosted, no tracking, no profiling
 - ✅ **Docker-based** - Easy 2-minute installation
 - ✅ **JSON API** - Simple REST API for any application
 - ✅ **Python support** - Built-in search function
 - ✅ **Production-ready** - Fully tested and documented
-
-## Auto-Update System
-
-The skill automatically checks for updates when loaded:
-
-1. **Version Check** - Compares local VERSION with GitHub
-2. **Smart Throttling** - Only checks once per hour (configurable)
-3. **Safe Backup** - Creates backup before updating
-4. **Config Preservation** - Keeps your custom settings
-5. **Seamless Install** - Downloads and installs automatically
-6. **No Restart Required** - Update applies on next skill load
-
-### Manual Update
-
-```bash
-cd ~/.openclaw/workspace/skills/free-web-search
-bash scripts/auto-update.sh
-```
-
-### View Update Logs
-
-```bash
-tail -20 update.log
-```
 
 ## Search Engines Available
 
@@ -167,34 +193,34 @@ tail -20 update.log
 
 ## Management Commands
 
+**Linux/macOS:**
 ```bash
-# Check status
-bash scripts/docker-manager.sh status
+bash scripts/docker-manager.sh status    # Check status
+bash scripts/docker-manager.sh logs      # View logs
+bash scripts/docker-manager.sh restart   # Restart container
+bash scripts/docker-manager.sh stop      # Stop container
+```
 
-# View logs
-bash scripts/docker-manager.sh logs
-
-# Restart container
-bash scripts/docker-manager.sh restart
-
-# Stop container
-bash scripts/docker-manager.sh stop
+**Windows:**
+```cmd
+scripts\docker-manager.bat status        # Check status
+scripts\docker-manager.bat logs          # View logs
+scripts\docker-manager.bat restart       # Restart container
+scripts\docker-manager.bat stop          # Stop container
 ```
 
 ## Configuration
 
-### Environment Variables
-
+### Environment Variables (Optional)
 ```bash
 # Optional: Fallback to Tavily if SearXNG is down
 export TAVILY_API_KEY="tvly-your-key-here"
 ```
 
 ### SearXNG Settings
-
 Configuration file: `docker/settings.yml`
 
-You can customize:
+Customize:
 - Enabled search engines
 - Request timeouts
 - Result formats
@@ -202,30 +228,29 @@ You can customize:
 
 ## Cost Savings
 
-| Service | Cost | Your Cost |
-|---------|------|-----------|
+| Service | Annual Cost | Your Cost |
+|---------|-------------|-----------|
 | **This skill** | **Free forever** | **$0** ✅ |
-| Tavily | $120+/year | **Save $120** |
+| Tavily | $120/year | **Save $120** |
 | SerpAPI | $600/year | **Save $600** |
 | Google Custom Search | $1500+/year | **Save $1500** |
 
 ## Troubleshooting
 
 ### Container won't start
-
 ```bash
 # Check Docker is running
 docker info
 
 # Check port 8888
-lsof -i :8888
+lsof -i :8888  # Linux/macOS
+netstat -ano | findstr :8888  # Windows
 
 # View container logs
 docker logs searxng-openclaw
 ```
 
 ### No search results
-
 ```bash
 # Try different engines
 curl 'http://localhost:8888/search?q=test&format=json&engines=google'
@@ -235,10 +260,10 @@ docker logs searxng-openclaw 2>&1 | grep -i "error"
 ```
 
 ### Update failed
-
 ```bash
 # View update logs
-cat update.log
+cat update.log  # Linux/macOS
+type update.log  # Windows
 
 # Restore from backup
 tar -xzf backups/skill_TIMESTAMP.tar.gz -C ~/.openclaw/workspace/skills/free-web-search/
@@ -246,10 +271,10 @@ tar -xzf backups/skill_TIMESTAMP.tar.gz -C ~/.openclaw/workspace/skills/free-web
 
 ## Requirements
 
-- Docker Desktop (installed and running)
-- 2GB RAM available
-- Port 8888 available
-- Git (for installation)
+- **Docker Desktop** - Installed and running
+- **2GB RAM** - Available for container
+- **Port 8888** - Available
+- **Git** - For installation and updates
 
 ## Credits & Attribution
 

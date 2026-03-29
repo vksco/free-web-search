@@ -9,24 +9,7 @@ Powered by [SearXNG](https://github.com/searxng/searxng) - Privacy-respecting, h
 
 ## Quick Start
 
-### One-Prompt Installation
-
-Give this prompt to your AI agent (Claude, ChatGPT, Codex, Cursor, OpenCode, Pi, Gemini):
-
-```
-Install the free-web-search skill from https://github.com/vksco/free-web-search
-
-Requirements:
-- Ensure Docker is installed and running
-- Clone the repo to ~/.openclaw/workspace/skills/free-web-search
-- Make all scripts executable (Linux/macOS only)
-- Start the SearXNG container
-- Test with a simple search query
-
-After installation, confirm it's working by searching for "AI agents" and showing me 3 results.
-```
-
-### Manual Installation
+### Installation
 
 **Linux/macOS:**
 ```bash

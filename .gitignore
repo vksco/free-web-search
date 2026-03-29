@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.py[cod]
+__pycache__/
+
+# Logs
+*.log
+
+# Backups
+backups/
+
+# Docker
+docker/secret_key
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.bak
+*.swp

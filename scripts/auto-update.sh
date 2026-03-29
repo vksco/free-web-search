@@ -5,13 +5,14 @@
 set -e
 
 # Configuration
-SKILL_NAME="searxng-integration"
+SKILL_NAME="free-web-search"
 REPO_URL="https://github.com/vksco/free-web-search"
 BRANCH="main"
-LOCAL_VERSION_FILE="/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME/VERSION"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+LOCAL_VERSION_FILE="$SCRIPT_DIR/VERSION"
 REMOTE_VERSION_URL="https://raw.githubusercontent.com/vksco/free-web-search/$BRANCH/VERSION"
-LOG_FILE="/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME/update.log"
-BACKUP_DIR="/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME/backups"
+LOG_FILE="$SCRIPT_DIR/update.log"
+BACKUP_DIR="$SCRIPT_DIR/backups"
 
 # Colors
 RED='\033[0;31m'
@@ -54,7 +55,7 @@ create_backup() {
     
     # Backup entire skill directory
     tar -czf "$BACKUP_DIR/skill_$(date +%Y%m%d_%H%M%S).tar.gz" \
-        -C "/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME" \
+        -C "$SCRIPT_DIR" \
         --exclude="backups" \
         .
     
@@ -104,13 +105,14 @@ perform_update() {
     # Stop container if running
     if docker ps --format '{{.Names}}' | grep -q "searxng-openclaw"; then
         log "INFO" "Stopping SearXNG container for update..."
-        bash "/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME/scripts/docker-manager.sh" stop
+        bash "$SCRIPT_DIR/scripts/docker-manager.sh" stop
         CONTAINER_WAS_RUNNING=true
     fi
     
     # Download update
     log "INFO" "Downloading update from GitHub..."
-    cd "/Users/vikashsharma/.openclaw/workspace/skills"
+    local SKILL_PARENT_DIR="$(dirname "$SCRIPT_DIR")"
+    cd "$SKILL_PARENT_DIR"
     
     # Remove old version (keep config and data)
     if [ -d "$SKILL_NAME" ]; then
@@ -145,18 +147,19 @@ perform_update() {
     fi
     
     # Update version file
-    echo "$(cat /tmp/searxng-temp/VERSION)" > "$LOCAL_VERSION_FILE"
+    local NEW_VERSION=$(cat "$SKILL_PARENT_DIR/$SKILL_NAME/VERSION")
+    echo "$NEW_VERSION" > "$LOCAL_VERSION_FILE"
     
     log "INFO" "Update installed successfully"
     
     # Restart container if it was running
     if [ "$CONTAINER_WAS_RUNNING" = true ]; then
         log "INFO" "Restarting SearXNG container..."
-        bash "/Users/vikashsharma/.openclaw/workspace/skills/$SKILL_NAME/scripts/docker-manager.sh" start
+        bash "$SCRIPT_DIR/scripts/docker-manager.sh" start
     fi
     
     # Notify user
-    log "INFO" "✅ Update complete! SearXNG skill updated to v$(cat $LOCAL_VERSION_FILE)"
+    log "INFO" "✅ Update complete! Skill updated to v$(cat $LOCAL_VERSION_FILE)"
     
     # Send notification to user (optional - requires notification setup)
     # notify_user "SearXNG skill updated to v$(cat $LOCAL_VERSION_FILE)"

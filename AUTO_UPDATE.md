@@ -1,214 +1,240 @@
-# Auto-Update Guide for SearXNG Skill
+# Auto-Update Guide for Free Web Search Skill
 
 ## Overview
 The auto-update script automatically checks for updates from GitHub every hour and installs them seamlessly.
 
 ## Setup
-### 1. Publish to GitHub
-First, publish this skill to GitHub:
+
+### 1. Make Script Executable
 ```bash
-cd /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration
-git init
-git add .
-git commit -m "Initial commit - SearXNG integration skill v0.0.1"
-git branch -M main
-git remote add origin https://github.com/vksco/searxng-skill.git
-git push -u origin main
+chmod +x scripts/auto-update.sh
 ```
 
-### 2. Configure Auto-Update Script
-Edit `/Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh`:
-
-Replace `vksco` with your actual GitHub username:
+### 2. Test Auto-Update
 ```bash
-REPO_URL="https://github.com/vksco/searxng-skill"
-REMOTE_VERSION_URL="https://raw.githubusercontent.com/vksco/searxng-skill/main/VERSION"
+bash scripts/auto-update.sh
 ```
 
-### 3. Test Auto-Update
+### 3. Setup Cron Job (Auto-Check Every Hour)
 ```bash
-chmod +x /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
-bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
-```
-
-### 4. Setup Cron Job (Auto-Check Every Hour)
-```bash
-# Add to crontab
 crontab -e
 ```
 
 Add this line:
 ```cron
-# Check for SearXNG skill updates every hour
-0 * * * * /bin/bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+# Check for skill updates every hour
+0 * * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
 ```
 
-Or for a more controlled approach (every 6 hours):
-```cron
-0 */6 * * * /bin/bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
-```
+**Replace `/path/to/` with your actual installation path.**
 
-### 5. Manual Update Check
+Examples for different systems:
 ```bash
-bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+# macOS
+0 * * * * /bin/bash /Users/YOUR_USERNAME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
+
+# Linux
+0 * * * * /bin/bash /home/YOUR_USERNAME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
+
+# Or use $HOME
+0 * * * * /bin/bash $HOME/.openclaw/workspace/skills/free-web-search/scripts/auto-update.sh
 ```
+
+### 4. Alternative Schedules
+
+Every 6 hours:
+```cron
+0 */6 * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
+```
+
+Daily at midnight:
+```cron
+0 0 * * * /bin/bash /path/to/free-web-search/scripts/auto-update.sh
+```
+
+Weekly on Sunday:
+```cron
+0 0 * * 0 /bin/bash /path/to/free-web-search/scripts/auto-update.sh
+```
+
+---
 
 ## How It Works
-1. **Version Check**: Compares local VERSION file with GitHub's VERSION file
-2. **Backup**: Creates backup of current skill files
-3. **Download**: Pulls latest version from GitHub
-4. **Preserve**: Keeps your configuration and data
-5. **Install**: Updates skill files
-6. **Restart**: Restarts SearXNG container if it was running
-7. **Notify**: Logs update completion
+
+### Update Process (7 Steps)
+
+1. **Version Check** - Compares local VERSION file with GitHub's VERSION file
+2. **Create Backup** - Creates backup of current skill files (tar.gz)
+3. **Stop Container** - Stops SearXNG Docker container if running
+4. **Download** - Pulls latest version from GitHub
+5. **Preserve Config** - Keeps your custom configuration and data
+6. **Install** - Updates skill files
+7. **Restart** - Restarts SearXNG container automatically
+
+### What Gets Updated
+- ✅ Scripts (auto-update.sh, docker-manager.sh, search.py)
+- ✅ Documentation (README.md, USAGE.md, etc.)
+- ✅ Skill metadata (SKILL.md)
+- ✅ API references
+
+### What's Preserved (Never Changed)
+- 🔒 `docker/settings.yml` - Your SearXNG configuration
+- 🔒 `docker/secret_key` - Your secret key
+- 🔒 `backups/` - Your backup history
+- 🔒 `update.log` - Your update logs
+
+---
 
 ## Features
-- **Automatic**: Runs via cron every hour
-- **Safe**: Creates backups before updating
-- **Smart**: Preserves your custom config
-- **Seamless**: Restarts container automatically
-- **Logged**: All actions logged to update.log
-- **Reversible**: Can restore from backups
+
+- **Automatic** - Runs via cron on your schedule
+- **Safe** - Creates backups before every update
+- **Smart** - Preserves your custom configuration
+- **Seamless** - Restarts container automatically
+- **Logged** - All actions logged to `update.log`
+- **Reversible** - Can restore from backups if needed
+
+---
 
 ## User Notification (Optional)
-To notify users when an update is installed, you notification system like:
 
-**Option 1: macOS Notification**
+### Option 1: macOS Notification
+Add to `auto-update.sh` after successful update:
 ```bash
-# Add to auto-update.sh after successful update
-osascript -e 'display notification "SearXNG skill updated to v'$NEW_VERSION'" with title "OpenClaw"'
+osascript -e 'display notification "Free Web Search skill updated to v'$NEW_VERSION'" with title "OpenClaw"'
 ```
 
-**Option 2: Log File Monitoring**
-OpenClaw can check the update log:
-```python
-# In your skill or agent code
-with open('/path/to/update.log', 'r') as f:
-    if 'Update complete' in f.read():
-        # Notify user via OpenClaw messaging
+### Option 2: Desktop Notification (Linux)
+```bash
+notify-send "OpenClaw" "Free Web Search skill updated to v$NEW_VERSION"
 ```
 
-**Option 3: Slack/Discord Webhook**
+### Option 3: Slack/Discord Webhook
 ```bash
-# Add webhook notification in auto-update.sh
 curl -X POST -H 'Content-type: application/json' \
-  --data '{"text":"SearXNG skill updated to v'$NEW_VERSION'"}' \
+  --data '{"text":"Free Web Search skill updated to v'$NEW_VERSION'"}' \
   YOUR_WEBHOOK_URL
 ```
 
+---
+
 ## Configuration Options
+
 ### Auto-Update Frequency
-Edit cron schedule:
-```bash
-# Every hour
-0 * * * * /path/to/auto-update.sh
 
-# Every 6 hours
-0 */6 * * * /path/to/auto-update.sh
-
-# Daily at midnight
-0 0 * * * /path/to/auto-update.sh
-
-# Weekly on Sunday at midnight
-0 0 * * 0 /path/to/auto-update.sh
-```
-
-### Update Branch
-Change which different branch for testing:
-```bash
-BRANCH="develop"  # instead of "main"
-```
+| Schedule | Cron Expression |
+|----------|----------------|
+| Every hour | `0 * * * *` |
+| Every 6 hours | `0 */6 * * *` |
+| Daily | `0 0 * * *` |
+| Weekly | `0 0 * * 0` |
 
 ### Skip Confirmation Prompt
-For fully automatic updates without user confirmation, change in auto-update.sh:
-```bash
-# Comment out or remove the read -p line
-# read -p "Update available. Install now? [y/N]: " -n response
-# response=${response:-n}
 
+For fully automatic updates without asking, edit `auto-update.sh`:
+
+**Change this:**
+```bash
+read -p "Update available. Install now? [y/N]: " -n response
+response=${response:-n}
+
+if [[ "$response" =~ ^[Yy]$ ]]; then
+    perform_update
+```
+
+**To this:**
+```bash
 # Always update without asking
 perform_update
 ```
 
+---
+
 ## Version File Format
-The VERSION file should contain a semantic version:
+
+The VERSION file uses semantic versioning:
 ```
 MAJOR.MINOR.PATCH
 ```
 
 Example progression:
 ```
-0.0.1 - Initial release
-0.0.2 - Bug fixes
-0.1.0 - New features (backwards compatible)
-1.0.0 - Breaking changes
+0.1.0 - First stable release
+0.1.1 - Bug fixes
+0.2.0 - New features (backwards compatible)
+1.0.0 - Major release (possible breaking changes)
 ```
 
+---
+
 ## Update Workflow
+
 ```
 ┌─────────────┐
-│   Cron Job   │
-│  (hourly)    │
+│  Cron Job   │
+│ (Scheduled) │
 └──────┬──────┘
        │
        v
 ┌──────────────────┐
-│ Check GitHub    │
-│  for updates    │
+│  Check GitHub    │
+│  for updates     │
 └──────┬───────────┘
        │
        v
   ┌────────────────┐
-  │ New version?  │
+  │ New version?   │
   └────┬─────┬─────┘
-       No │          │ Yes
-       │            │
-       v            v
-    Done      ┌─────────────┐
-              │   Backup     │
-              │   current    │
-              └──────┬──────┘
-                     │
-                     v
-              ┌─────────────┐
-              │   Download  │
-              │   from GH    │
-              └──────┬──────┘
-                     │
-                     v
-              ┌─────────────┐
-              │  Preserve   │
-              │   config     │
-              └──────┬──────┘
-                     │
-                     v
-              ┌─────────────┐
-              │   Install   │
-              │   update    │
-              └──────┬──────┘
-                     │
-                     v
-              ┌─────────────┐
-              │  Restart   │
-              │  container   │
-              └─────────────┘
-                     │
-                     v
-                ✅ Done
+    No │     │ Yes
+       │     │
+       v     v
+    Done   ┌─────────────┐
+           │   Backup    │
+           │   current   │
+           └──────┬──────┘
+                  │
+                  v
+           ┌─────────────┐
+           │   Download  │
+           │   from GH   │
+           └──────┬──────┘
+                  │
+                  v
+           ┌─────────────┐
+           │  Preserve   │
+           │   config    │
+           └──────┬──────┘
+                  │
+                  v
+           ┌─────────────┐
+           │   Install   │
+           │   update    │
+           └──────┬──────┘
+                  │
+                  v
+           ┌─────────────┐
+           │  Restart    │
+           │  container  │
+           └──────┬──────┘
+                  │
+                  v
+             ✅ Done
 ```
 
+---
+
 ## Troubleshooting
+
 ### "Permission denied"
 ```bash
-chmod +x /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+chmod +x scripts/auto-update.sh
 ```
 
 ### "Command not found"
 ```bash
 # Ensure bash path is correct
 which bash
-# Update script she use:
-#!/bin/bash
+# Should output: /bin/bash or /usr/bin/bash
 ```
 
 ### "Git clone failed"
@@ -216,8 +242,8 @@ which bash
 # Check internet connection
 ping github.com
 
-# Check repository URL
-curl -I https://github.com/vksco/searxng-skill
+# Check repository URL is accessible
+curl -I https://github.com/vksco/free-web-search
 ```
 
 ### "Container won't restart"
@@ -226,77 +252,126 @@ curl -I https://github.com/vksco/searxng-skill
 docker logs searxng-openclaw
 
 # Manually start
-bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/docker-manager.sh start
+bash scripts/docker-manager.sh start
 ```
 
 ### Restore from Backup
 ```bash
 # List backups
-ls -la /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/backups/
+ls -la backups/
 
-# Restore latest backup
-tar -xzf /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/backups/skill_*.tar.gz -C /
+# Restore from backup (replace with your backup filename)
+tar -xzf backups/skill_TIMESTAMP.tar.gz -C /path/to/free-web-search/
 ```
 
-## Security Considerations
-- **HTTPS Only**: Only download from HTTPS GitHub URLs
-- **Version Verification**: Checks VERSION file format
-- **Backup Retention**: Keeps last 5 backups
-- **Config Preservation**: Never overwrites user config
-- **Log Security**: Logs don't contain sensitive data
+---
 
 ## Testing Updates
-### Test Workflow
-1. Make a small change to your local files
-2. Increment VERSION file
-3. Push to GitHub
-4. Wait for cron to run (or run manually)
-5. Verify update installed
 
-6. Check container still running
-
-### Simulate Update
+### Manual Update Check
 ```bash
-# Increment version locally
-echo "0.0.2" > /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/VERSION
-
-# Run update script
-bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+# Run update script manually
+bash scripts/auto-update.sh
 ```
 
-## Uninstallation
-To remove auto-update cron job:
+### Check Update Logs
+```bash
+# View recent updates
+tail -20 update.log
+
+# Follow live updates
+tail -f update.log
+```
+
+### View Current Version
+```bash
+cat VERSION
+```
+
+---
+
+## Backup System
+
+### How Backups Work
+- Created automatically before every update
+- Stored in `backups/` directory
+- Named with timestamp: `skill_YYYYMMDD_HHMMSS.tar.gz`
+- Last 5 backups retained (older ones auto-deleted)
+
+### Manual Backup
+```bash
+# Create backup manually
+tar -czf backups/manual_backup_$(date +%Y%m%d_%H%M%S).tar.gz \
+  --exclude='backups' \
+  --exclude='*.log' \
+  .
+```
+
+### List Backups
+```bash
+ls -lh backups/
+```
+
+---
+
+## Security Considerations
+
+- **HTTPS Only** - Downloads only from HTTPS GitHub URLs
+- **Version Verification** - Validates VERSION file format
+- **Backup Retention** - Keeps last 5 backups
+- **Config Preservation** - Never overwrites user configuration
+- **Log Security** - Logs don't contain sensitive data
+- **No Remote Execution** - Only updates files, doesn't run remote code
+
+---
+
+## Disable or Remove
+
+### Disable Auto-Update
+```bash
+# Rename script to prevent execution
+mv scripts/auto-update.sh scripts/auto-update.sh.disabled
+```
+
+### Remove Cron Job
 ```bash
 crontab -e
-# Delete the line containing searxng-integration
+# Delete the line containing auto-update.sh
 ```
 
-To disable auto-update
+### Completely Remove Auto-Update
 ```bash
-mv /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh \
-   /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh.disabled
+# Remove cron job
+crontab -e  # Delete auto-update line
+
+# Remove script (optional)
+rm scripts/auto-update.sh
+
+# Keep backups and logs if you want history
 ```
+
+---
 
 ## Summary
-✅ **Automatic**: Checks for updates every hour via cron
-✅ **Safe**: Creates backups before updating
-✅ **Smart**: Preserves custom config
-✅ **Seamless**: Restarts container automatically
-✅ **Logged**: All actions logged
-✅ **Reversible**: Can restore from backups
 
-## Quick Start
-```bash
-# 1. Edit auto-update.sh with your GitHub username
-# 2. Make executable
-chmod +x /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+✅ **Automatic** - Checks for updates on your schedule via cron  
+✅ **Safe** - Creates backups before updating  
+✅ **Smart** - Preserves custom configuration  
+✅ **Seamless** - Restarts container automatically  
+✅ **Logged** - All actions logged to `update.log`  
+✅ **Reversible** - Can restore from backups  
 
-# 3. Add to crontab
-crontab -e
-# Add: 0 * * * * /bin/bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
+---
 
-# 4. Test manually
-bash /Users/vikashsharma/.openclaw/workspace/skills/searxng-integration/scripts/auto-update.sh
-```
+## Quick Start Checklist
 
-The skill will now auto-update every hour! 
+- [ ] Make script executable: `chmod +x scripts/auto-update.sh`
+- [ ] Test manually: `bash scripts/auto-update.sh`
+- [ ] Add to crontab: `crontab -e`
+- [ ] Verify cron job: `crontab -l`
+- [ ] Check logs: `tail -f update.log`
+
+---
+
+**Need help?** Check `update.log` or open an issue:  
+https://github.com/vksco/free-web-search/issues
